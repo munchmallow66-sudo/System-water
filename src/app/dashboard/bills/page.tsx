@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { toPng } from 'html-to-image'
 import { endOfMonth, format, startOfMonth } from 'date-fns'
 import { th } from 'date-fns/locale'
 import {
@@ -115,6 +116,24 @@ export default function BillsPage() {
     totalPaid: 0,
     totalUnpaid: 0,
   })
+  const billRef = useRef<HTMLDivElement>(null)
+
+  const handleDownloadBillImage = async () => {
+    if (!billRef.current || !selectedBill) return
+    try {
+      toast({ title: 'กำลังสร้างรูปภาพ...', description: 'กรุณารอสักครู่' })
+      // Use pixelRatio: 3 for high-res crisp text
+      const dataUrl = await toPng(billRef.current, { quality: 1.0, pixelRatio: 3 })
+      const link = document.createElement('a')
+      link.download = `bill-${selectedBill.billNumber}.png`
+      link.href = dataUrl
+      link.click()
+      toast({ title: 'สำเร็จ', description: 'ดาวน์โหลดรูปภาพบิลเรียบร้อยแล้ว' })
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถสร้างรูปภาพได้', variant: 'destructive' })
+    }
+  }
 
   const fetchSessionAndHouses = async () => {
     const [sessionResponse, housesResponse] = await Promise.all([
@@ -737,6 +756,12 @@ export default function BillsPage() {
                     >
                       พิมพ์ใบแจ้งหนี้
                     </button>
+                    <button
+                      onClick={handleDownloadBillImage}
+                      className="w-full rounded-2xl border border-blue-500/30 bg-blue-500/10 py-3 text-sm font-bold text-blue-400 transition-all hover:bg-blue-500/20"
+                    >
+                      บันทึกเป็นรูปภาพ (สำหรับมือถือ)
+                    </button>
                   </div>
                 </div>
               </div>
@@ -771,6 +796,90 @@ export default function BillsPage() {
                 >
                   {isDeleting ? 'กำลังลบ...' : 'ยืนยันการลบ'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden beautiful bill template for image export */}
+        {selectedBill && (
+          <div className="absolute left-[-9999px] top-[-9999px]">
+            <div ref={billRef} className="w-[600px] bg-white p-10 font-sans text-slate-900" style={{ backgroundImage: 'linear-gradient(to bottom right, #ffffff, #f8fafc)' }}>
+              {/* Header */}
+              <div className="flex justify-between items-center mb-8 border-b-2 border-blue-500 pb-6">
+                <div>
+                  <h1 className="text-3xl font-black text-blue-700 tracking-tight">ใบแจ้งค่าน้ำประปา</h1>
+                  <p className="text-slate-500 mt-1 text-sm font-medium">ระบบบริหารจัดการน้ำหมู่บ้าน</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">เลขที่บิล</p>
+                  <p className="text-xl font-bold text-slate-900">{selectedBill.billNumber}</p>
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              <div className="flex justify-between mb-8 bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+                <div>
+                  <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">ข้อมูลผู้ใช้น้ำ</p>
+                  <p className="text-lg font-bold text-slate-900">บ้านเลขที่ {selectedBill.houseNumber}</p>
+                  <p className="text-slate-600 font-medium">{selectedBill.ownerName}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">ประจำเดือน</p>
+                  <p className="text-lg font-bold text-slate-900">{formatPeriod(selectedBill.periodStart, selectedBill.periodEnd)}</p>
+                  <p className="text-sm text-slate-500">ครบกำหนด: {formatThaiDate(selectedBill.dueDate)}</p>
+                </div>
+              </div>
+
+              {/* Usage Stats */}
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">เลขครั้งก่อน</p>
+                  <p className="text-xl font-bold text-slate-900">{number(selectedBill.previousReading)}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">เลขครั้งล่าสุด</p>
+                  <p className="text-xl font-bold text-slate-900">{number(selectedBill.currentReading)}</p>
+                </div>
+                <div className="bg-blue-600 p-4 rounded-2xl text-center shadow-lg shadow-blue-200">
+                  <p className="text-xs font-bold text-blue-200 uppercase mb-1">ปริมาณน้ำที่ใช้</p>
+                  <p className="text-xl font-bold text-white">{number(selectedBill.usage)} <span className="text-sm font-medium opacity-80">หน่วย</span></p>
+                </div>
+              </div>
+
+              {/* Cost Breakdown */}
+              <div className="space-y-3 mb-8">
+                <div className="flex justify-between text-slate-600 font-medium py-2">
+                  <span>ค่าบริการพื้นฐาน</span>
+                  <span>{currency(selectedBill.baseFee)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600 font-medium py-2">
+                  <span>ค่าน้ำประปาตามการใช้จริง</span>
+                  <span>{currency(selectedBill.usageFee)}</span>
+                </div>
+                {(selectedBill.carryOverAmount || 0) > 0 && (
+                  <div className="flex justify-between text-rose-500 font-medium py-2 border-t border-slate-100">
+                    <span>ยอดค้างชำระจากรอบก่อน</span>
+                    <span>{currency(selectedBill.carryOverAmount || 0)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Total */}
+              <div className="flex items-center justify-between bg-slate-900 text-white p-6 rounded-3xl shadow-xl">
+                <div>
+                  <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">ยอดรวมทั้งสิ้น</p>
+                  <div className="flex items-center gap-2">
+                    <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${selectedBill.isPaid ? 'bg-green-500/20 text-green-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                      {selectedBill.isPaid ? 'ชำระแล้ว' : 'ยังไม่ชำระ'}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-4xl font-black">{currency(selectedBill.totalAmount)}</p>
+              </div>
+              
+              <div className="mt-8 text-center text-xs text-slate-400 font-medium">
+                เอกสารนี้สร้างโดยระบบอัตโนมัติเมื่อวันที่ {formatThaiDate(new Date().toISOString())}
               </div>
             </div>
           </div>

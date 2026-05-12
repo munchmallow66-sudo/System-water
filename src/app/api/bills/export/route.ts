@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       ].join(',');
     });
 
-    const csv = [headers, ...rows].join('\n');
+    const csv = '\uFEFF' + [headers, ...rows].join('\n');
 
     // Return CSV with appropriate headers
     return new Response(csv, {
