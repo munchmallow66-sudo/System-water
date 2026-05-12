@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const queryResult = paginationSchema.safeParse({
       page: searchParams.get('page') || '1',
-      limit: searchParams.get('limit') || '20',
+      limit: searchParams.get('limit') || '1500',
       search: searchParams.get('search') || undefined,
       sortBy: searchParams.get('sortBy') || 'houseNumber',
       sortOrder: searchParams.get('sortOrder') || 'asc',

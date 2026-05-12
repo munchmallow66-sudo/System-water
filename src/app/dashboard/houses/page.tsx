@@ -60,7 +60,7 @@ export default function HousesPage() {
   const fetchHouses = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/houses')
+      const response = await fetch('/api/houses?limit=1500')
       if (response.ok) {
         const data = await response.json()
         setHouses(data.data || [])
