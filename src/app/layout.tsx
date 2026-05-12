@@ -18,6 +18,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ระบบจัดการน้ำประปาหมู่บ้าน",
   description: "ระบบจัดการน้ำประปาหมู่บ้าน - Village Water Management System",
+  applicationName: "WaterSystem",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ระบบจัดการน้ำ",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export const viewport: Viewport = {
