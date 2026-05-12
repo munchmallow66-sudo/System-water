@@ -99,7 +99,7 @@ export const publicSearchSchema = z.object({
 // Query parameter schemas
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(2000).default(500),
+  limit: z.coerce.number().int().min(1).max(2000).default(1500),
   search: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
