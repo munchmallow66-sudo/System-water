@@ -6,8 +6,10 @@ export const publicSearchSchema = z.object({
 
 export const createHouseSchema = z.object({
   houseNumber: z.string().min(1, 'House number is required').max(20, 'House number too long'),
-  ownerName: z.string().min(2, 'Owner name must be at least 2 characters').max(100, 'Owner name too long'),
-  imageUrl: z.string().url('Invalid image URL').optional().or(z.literal('')),
+  ownerName: z.string().min(1, 'Owner name is required').max(100, 'Owner name too long'),
+  imageUrl: z.string().url('Invalid image URL').optional().or(z.literal('')).nullable(),
+  initialReading: z.coerce.number().min(0, 'Initial reading cannot be negative').optional(),
+  isActive: z.coerce.boolean().optional(),
 })
 
 export const updateHouseSchema = createHouseSchema.partial()
