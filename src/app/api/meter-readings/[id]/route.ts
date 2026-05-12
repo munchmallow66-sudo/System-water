@@ -49,8 +49,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       where: { meterReadingId: id },
     });
 
-    if (associatedBill) {
-      return apiError('Cannot update meter reading that has an associated bill');
+    if (associatedBill && associatedBill.isPaid) {
+      return apiError('ไม่สามารถแก้ไขมิเตอร์ได้ เนื่องจากบิลถูกชำระเงินแล้ว');
     }
 
     // Parse and validate request body
@@ -117,6 +117,40 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     });
 
+    // If there is an associated unpaid bill, update it
+    if (associatedBill && (updateData.readingValue !== undefined || updateData.usage !== undefined)) {
+      const newUsage = updateData.usage ?? Number(existingReading.usage);
+      const currentReadingValue = updateData.readingValue ?? Number(existingReading.readingValue);
+      
+      const activeRates = await db.waterRate.findMany({
+        where: { isActive: true },
+        orderBy: { minUnits: 'asc' },
+      });
+      const ratesForCalc = activeRates.map(r => ({
+        minUnits: Number(r.minUnits),
+        maxUnits: Number(r.maxUnits),
+        ratePerUnit: Number(r.ratePerUnit),
+      }));
+
+      const { calculateWaterBillWithRates } = await import('@/lib/water-bill');
+      const usageFee = calculateWaterBillWithRates(newUsage, ratesForCalc);
+      
+      const oldUsageFee = Number(associatedBill.usageFee);
+      const oldTotal = Number(associatedBill.totalAmount);
+      const diff = usageFee - oldUsageFee;
+      const newTotalAmount = oldTotal + diff;
+
+      await db.bill.update({
+        where: { id: associatedBill.id },
+        data: {
+          currentReading: currentReadingValue,
+          usage: newUsage,
+          usageFee: usageFee,
+          totalAmount: Math.max(0, newTotalAmount),
+        }
+      });
+    }
+
     // Log audit
     await db.auditLog.create({
       data: {
@@ -166,7 +200,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     if (associatedBill) {
-      return apiError('Cannot delete meter reading that has an associated bill');
+      if (associatedBill.isPaid) {
+        return apiError('ไม่สามารถลบมิเตอร์ได้ เนื่องจากบิลถูกชำระเงินแล้ว');
+      }
+      // Delete the unpaid bill first
+      await db.bill.delete({
+        where: { id: associatedBill.id }
+      });
     }
 
     // Delete reading

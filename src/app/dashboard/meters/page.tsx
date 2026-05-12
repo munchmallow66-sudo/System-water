@@ -38,6 +38,7 @@ interface MeterReading {
   notes?: string
   imageUrl?: string
   recordedBy: { name: string }
+  bill?: { id: string; isPaid: boolean } | null
   createdAt: string
 }
 
@@ -589,22 +590,30 @@ export default function MetersPage() {
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${reading.isAnomaly ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' : 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300'}`}>
                           {reading.isAnomaly ? 'ผิดปกติ' : 'ปกติ'}
                         </span>
-                        <div className="flex items-center gap-1 ml-1 border-l border-slate-200 pl-2 dark:border-slate-700">
-                          <button
-                            onClick={() => setEditingReading(reading)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
-                            title="แก้ไข"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteReading(reading.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-                            title="ลบ"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                        {reading.bill?.isPaid ? (
+                          <div className="flex items-center gap-1 ml-1 border-l border-slate-200 pl-2 dark:border-slate-700">
+                            <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20" title="จ่ายเงินแล้ว ไม่สามารถแก้ไขได้">
+                              จ่ายแล้ว
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 ml-1 border-l border-slate-200 pl-2 dark:border-slate-700">
+                            <button
+                              onClick={() => setEditingReading(reading)}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+                              title="แก้ไข"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReading(reading.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                              title="ลบ"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       </div>
 

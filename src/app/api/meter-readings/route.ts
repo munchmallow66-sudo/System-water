@@ -106,6 +106,12 @@ export async function GET(request: NextRequest) {
             name: true,
           },
         },
+        bill: {
+          select: {
+            id: true,
+            isPaid: true,
+          }
+        }
       },
     });
 
@@ -125,6 +131,7 @@ export async function GET(request: NextRequest) {
       notes: reading.notes,
       imageUrl: (reading as any).imageUrl,
       recordedBy: reading.recordedBy,
+      bill: reading.bill,
       createdAt: reading.createdAt,
     }));
 

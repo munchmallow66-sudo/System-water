@@ -11,7 +11,7 @@ const houseFormSchema = z.object({
   houseNumber: z.string().min(1, "กรุณาระบุเลขที่บ้าน").max(20, "เลขที่บ้านต้องไม่เกิน 20 ตัวอักษร"),
   ownerName: z.string().min(1, "กรุณาระบุชื่อเจ้าของบ้าน").max(100, "ชื่อเจ้าของบ้านต้องไม่เกิน 100 ตัวอักษร"),
   initialReading: z.coerce.number().min(0, "ค่ามิเตอร์ต้องไม่ติดลบ"),
-  isActive: z.coerce.boolean(),
+  isActive: z.union([z.boolean(), z.string()]).transform(val => val === true || val === "true"),
 });
 
 // Use z.input for the form type (pre-transform) and z.output for submit data (post-transform)
