@@ -103,6 +103,7 @@ export default function BillsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isExportingImage, setIsExportingImage] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'overdue'>('all')
   const [activeTab, setActiveTab] = useState<'all' | 'ready'>('all')
@@ -117,6 +118,26 @@ export default function BillsPage() {
     totalUnpaid: 0,
   })
   const billRef = useRef<HTMLDivElement>(null)
+  const reportRef = useRef<HTMLDivElement>(null)
+
+  const handleExportReportImage = async () => {
+    if (!reportRef.current) return
+    setIsExportingImage(true)
+    try {
+      toast({ title: 'กำลังสร้างรูปภาพสรุป...', description: 'กรุณารอสักครู่' })
+      const dataUrl = await toPng(reportRef.current, { quality: 1.0, pixelRatio: 2, backgroundColor: '#ffffff' })
+      const link = document.createElement('a')
+      link.download = `bills-summary-${format(new Date(), 'yyyy-MM-dd')}.png`
+      link.href = dataUrl
+      link.click()
+      toast({ title: 'สำเร็จ', description: 'ดาวน์โหลดรูปภาพสรุปยอดแล้ว' })
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถสร้างรูปภาพสรุปได้', variant: 'destructive' })
+    } finally {
+      setIsExportingImage(false)
+    }
+  }
 
   const handleDownloadBillImage = async () => {
     if (!billRef.current || !selectedBill) return
@@ -489,14 +510,24 @@ export default function BillsPage() {
               </select>
             )}
             {userRole === 'ADMIN' && activeTab === 'all' && (
-              <button
-                onClick={handleExportCSV}
-                disabled={isExporting}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 transition-colors"
-              >
-                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                CSV
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleExportCSV}
+                  disabled={isExporting}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 transition-colors"
+                >
+                  {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                  CSV
+                </button>
+                <button
+                  onClick={handleExportReportImage}
+                  disabled={isExportingImage}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-4 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-400 transition-colors"
+                >
+                  {isExportingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                  รูปภาพรายงาน
+                </button>
+              </div>
             )}
             <div className="hidden items-center rounded-2xl border border-slate-200 bg-slate-50/50 p-1 dark:border-slate-800 dark:bg-slate-900/50 sm:flex">
               <button className={`p-2 rounded-xl ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600 dark:bg-slate-800' : 'text-slate-400'}`} onClick={() => setViewMode('grid')}><LayoutGrid className="h-4 w-4" /></button>
@@ -884,6 +915,81 @@ export default function BillsPage() {
             </div>
           </div>
         )}
+
+        {/* Hidden Report Summary for Image Export */}
+        <div className="absolute left-[-9999px] top-[-9999px]">
+          <div ref={reportRef} className="w-[800px] bg-white p-10 font-sans text-slate-900" style={{ backgroundImage: 'linear-gradient(to bottom right, #ffffff, #f8fafc)' }}>
+            <div className="text-center mb-8 pb-6 border-b border-slate-200">
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">รายงานสรุปใบแจ้งค่าน้ำ</h1>
+              <p className="text-slate-500 mt-2 text-sm font-medium">
+                ประจำวันที่ {formatThaiDate(new Date().toISOString())}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">ยอดเรียกเก็บทั้งหมด</p>
+                <p className="text-3xl font-bold text-slate-900">{currency(summary.totalAmount)}</p>
+                <p className="text-sm text-slate-500 mt-2">{number(bills.length)} บิล</p>
+              </div>
+              <div className="bg-green-50 p-6 rounded-2xl border border-green-100">
+                <p className="text-sm font-bold text-green-600/70 uppercase tracking-wider mb-2">ชำระแล้ว</p>
+                <p className="text-3xl font-bold text-green-700">{currency(summary.totalPaid)}</p>
+                <p className="text-sm text-green-600 mt-2">{number(bills.filter(b => b.isPaid).length)} บิล</p>
+              </div>
+              <div className="bg-rose-50 p-6 rounded-2xl border border-rose-100">
+                <p className="text-sm font-bold text-rose-600/70 uppercase tracking-wider mb-2">ค้างชำระ / เกินกำหนด</p>
+                <p className="text-3xl font-bold text-rose-700">{currency(summary.totalUnpaid)}</p>
+                <p className="text-sm text-rose-600 mt-2">{number(bills.filter(b => !b.isPaid).length)} บิล</p>
+              </div>
+              <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                <p className="text-sm font-bold text-blue-600/70 uppercase tracking-wider mb-2">อัตราการชำระเงิน</p>
+                <p className="text-3xl font-bold text-blue-700">
+                  {summary.totalAmount > 0 ? Math.round((summary.totalPaid / summary.totalAmount) * 100) : 0}%
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-slate-900 border-l-4 border-blue-500 pl-3">รายการบิล (ล่าสุด 15 รายการ)</h3>
+            </div>
+            
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="py-3 px-2 font-bold text-slate-600">เลขที่บิล</th>
+                  <th className="py-3 px-2 font-bold text-slate-600">บ้านเลขที่</th>
+                  <th className="py-3 px-2 font-bold text-slate-600 text-right">ยอดรวม</th>
+                  <th className="py-3 px-2 font-bold text-slate-600 text-center">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bills.slice(0, 15).map((bill, index) => (
+                  <tr key={bill.id} className={index % 2 === 0 ? 'bg-slate-50' : 'bg-white'}>
+                    <td className="py-3 px-2 font-medium">{bill.billNumber}</td>
+                    <td className="py-3 px-2">{bill.houseNumber}</td>
+                    <td className="py-3 px-2 text-right font-bold">{currency(bill.totalAmount)}</td>
+                    <td className="py-3 px-2 text-center">
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${bill.isPaid ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'}`}>
+                        {bill.isPaid ? 'ชำระแล้ว' : 'ค้างชำระ'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            {bills.length > 15 && (
+              <p className="text-center text-sm text-slate-500 mt-4 italic">
+                ... และรายการอื่นๆ อีก {bills.length - 15} รายการ
+              </p>
+            )}
+
+            <div className="mt-12 text-center text-xs text-slate-400 font-medium border-t border-slate-100 pt-6">
+              สร้างโดยระบบจัดการน้ำหมู่บ้าน
+            </div>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   )
