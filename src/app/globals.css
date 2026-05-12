@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  --color-slate-50: oklch(0.984 0.003 247.858);
+  --color-slate-900: oklch(0.21 0.006 285.885);
+  --color-slate-950: oklch(0.129 0.042 264.695);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-200;
+  }
+
+  .dark body {
+    @apply bg-slate-950 text-slate-50 selection:bg-blue-900 selection:text-blue-100;
+  }
+
+  /* Fix for inputs and textareas in dark mode */
+  input, textarea, select {
+    @apply bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-50;
+  }
+  
+  /* Modern scrollbar for dark mode */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-50 dark:bg-slate-950;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full border-2 border-transparent bg-clip-content hover:bg-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600;
+  }
+}
+
+/* Ensure common text colors have dark mode counterparts if not explicitly set */
+@layer utilities {
+  .dark .text-slate-900 {
+    @apply text-slate-50;
+  }
+  
+  .dark .text-slate-800 {
+    @apply text-slate-100;
+  }
+  
+  .dark .text-slate-700 {
+    @apply text-slate-200;
+  }
+  
+  .dark .text-slate-600 {
+    @apply text-slate-300;
+  }
+  
+  .dark .text-slate-500 {
+    @apply text-slate-400;
+  }
+
+  .dark .bg-white {
+    @apply bg-slate-950;
+  }
+  
+  .dark .bg-slate-50 {
+    @apply bg-slate-900;
+  }
+}

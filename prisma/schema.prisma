@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - Admin and Staff
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STAFF)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  meterReadings MeterReading[]
+  payments      Payment[]
+  auditLogs     AuditLog[]
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+// House model
+model House {
+  id           String   @id @default(cuid())
+  houseNumber  String   @unique
+  ownerName    String
+  imageUrl     String?
+  initialReading Decimal @db.Decimal(10, 2) @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  meterReadings MeterReading[]
+  bills         Bill[]
+  payments      Payment[]
+}
+
+// Meter Reading model
+model MeterReading {
+  id           String   @id @default(cuid())
+  houseId      String
+  readingDate  DateTime @default(now())
+  readingValue Decimal  @db.Decimal(10, 2)
+  usage        Decimal  @db.Decimal(10, 2) @default(0)
+  isAnomaly    Boolean  @default(false)
+  notes        String?
+  imageUrl     String?
+  recordedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  house     House @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  recordedBy User @relation(fields: [recordedById], references: [id])
+  bill      Bill?
+  
+  @@index([houseId])
+  @@index([readingDate])
+}
+
+// Bill model
+model Bill {
+  id               String   @id @default(cuid())
+  houseId          String
+  meterReadingId   String?  @unique
+  billNumber       String   @unique
+  periodStart      DateTime
+  periodEnd        DateTime
+  previousReading  Decimal  @db.Decimal(10, 2) @default(0)
+  currentReading   Decimal  @db.Decimal(10, 2) @default(0)
+  usage            Decimal  @db.Decimal(10, 2) @default(0)
+  baseFee          Decimal  @db.Decimal(12, 2) @default(0)
+  usageFee         Decimal  @db.Decimal(12, 2) @default(0)
+  totalAmount      Decimal  @db.Decimal(12, 2)
+  dueDate          DateTime
+  isPaid           Boolean  @default(false)
+  paidAt           DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  house        House           @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  meterReading MeterReading?   @relation(fields: [meterReadingId], references: [id])
+  payments     Payment[]
+  
+  @@index([houseId])
+  @@index([isPaid])
+  @@index([dueDate])
+}
+
+// Payment model
+model Payment {
+  id             String        @id @default(cuid())
+  billId         String
+  houseId        String
+  amount         Decimal       @db.Decimal(12, 2)
+  paymentMethod  PaymentMethod
+  receiptNumber  String        @unique
+  slipUrl        String?
+  notes          String?
+  collectorId    String
+  paymentDate    DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  
+  bill      Bill  @relation(fields: [billId], references: [id], onDelete: Cascade)
+  house     House @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  collector User  @relation(fields: [collectorId], references: [id])
+  
+  @@index([billId])
+  @@index([houseId])
+  @@index([paymentDate])
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  PROMPTPAY
+}
+
+// Water Rate Configuration (Tier-based pricing)
+model WaterRate {
+  id          String   @id @default(cuid())
+  name        String
+  minUnits    Decimal  @db.Decimal(10, 2)
+  maxUnits    Decimal  @db.Decimal(10, 2)
+  ratePerUnit Decimal  @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Audit Log for tracking changes
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}

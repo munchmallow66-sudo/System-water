@@ -1,0 +1,221 @@
+# Render Blueprint for Village Water Management System
+# This file defines all services for Blue/Green deployment
+
+services:
+  # ==========================================
+  # BLUE Environment (Production)
+  # ==========================================
+  - type: web
+    name: water-system-api-blue
+    runtime: node
+    plan: standard
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEPLOYMENT_ENV
+        value: blue
+      - key: PORT
+        value: 10000
+      - key: API_PREFIX
+        value: api/v1
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_EXPIRATION
+        value: 15m
+      - key: JWT_REFRESH_EXPIRATION
+        value: 7d
+      - key: BCRYPT_SALT_ROUNDS
+        value: 12
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://water-system.vercel.app
+      - key: LOG_LEVEL
+        value: info
+      - key: THROTTLE_TTL
+        value: 60
+      - key: THROTTLE_LIMIT
+        value: 100
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+    autoDeploy: true
+    numInstances: 2
+
+  # ==========================================
+  # GREEN Environment (Production - Standby)
+  # ==========================================
+  - type: web
+    name: water-system-api-green
+    runtime: node
+    plan: standard
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEPLOYMENT_ENV
+        value: green
+      - key: PORT
+        value: 10000
+      - key: API_PREFIX
+        value: api/v1
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_EXPIRATION
+        value: 15m
+      - key: JWT_REFRESH_EXPIRATION
+        value: 7d
+      - key: BCRYPT_SALT_ROUNDS
+        value: 12
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://water-system.vercel.app
+      - key: LOG_LEVEL
+        value: info
+      - key: THROTTLE_TTL
+        value: 60
+      - key: THROTTLE_LIMIT
+        value: 100
+    autoDeploy: false  # Manual deploy for green environment
+    numInstances: 2
+
+  # ==========================================
+  # Staging Environment
+  # ==========================================
+  - type: web
+    name: water-system-api-staging
+    runtime: node
+    plan: starter
+    branch: develop
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: staging
+      - key: DEPLOYMENT_ENV
+        value: staging
+      - key: PORT
+        value: 10000
+      - key: API_PREFIX
+        value: api/v1
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_EXPIRATION
+        value: 15m
+      - key: JWT_REFRESH_EXPIRATION
+        value: 7d
+      - key: BCRYPT_SALT_ROUNDS
+        value: 10
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://staging.water-system.vercel.app
+      - key: LOG_LEVEL
+        value: debug
+      - key: THROTTLE_TTL
+        value: 60
+      - key: THROTTLE_LIMIT
+        value: 200  # More lenient for testing
+    autoDeploy: true
+    numInstances: 1
+
+  # ==========================================
+  # Cron Job - Database Backup
+  # ==========================================
+  - type: cron
+    name: water-system-db-backup
+    runtime: node
+    plan: starter
+    branch: main
+    buildCommand: npm ci
+    startCommand: node scripts/backup-database.js
+    schedule: "0 2 * * *"  # Daily at 2 AM UTC
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET_NAME
+        value: water-system-backups
+      - key: NEON_API_KEY
+        sync: false
+      - key: NEON_PROJECT_ID
+        sync: false
+
+  # ==========================================
+  # Worker - Background Jobs
+  # ==========================================
+  - type: worker
+    name: water-system-worker
+    runtime: node
+    plan: starter
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+    numInstances: 1
+
+# ==========================================
+# Environment Groups (shared across services)
+# ==========================================
+envVarGroups:
+  - name: water-system-shared
+    envVars:
+      - key: APP_NAME
+        value: Village Water Management System
+      - key: APP_VERSION
+        value: 1.0.0
+      - key: SUPPORT_EMAIL
+        value: support@water-system.com
+      - key: TIMEZONE
+        value: Asia/Bangkok

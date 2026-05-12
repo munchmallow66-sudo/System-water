@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "npx prisma generate && npm run build",
+  "installCommand": "npm ci",
+  "devCommand": "npm run dev",
+  "regions": ["sin1"],
+  "env": {
+    "DATABASE_URL": "@database-url",
+    "NEXTAUTH_SECRET": "@nextauth-secret",
+    "NEXTAUTH_URL": "@nextauth-url",
+    "CLOUDINARY_CLOUD_NAME": "@cloudinary-cloud-name",
+    "CLOUDINARY_API_KEY": "@cloudinary-api-key",
+    "CLOUDINARY_API_SECRET": "@cloudinary-api-secret"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    }
+  ]
+}
