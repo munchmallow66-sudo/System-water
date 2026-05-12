@@ -27,16 +27,17 @@ export const updateUserSchema = z.object({
 export const createHouseSchema = z.object({
   houseNumber: z.string().min(1, 'House number is required'),
   ownerName: z.string().min(1, 'Owner name is required'),
-  imageUrl: z.string().url().optional().or(z.literal('')),
-  initialReading: z.number().min(0).default(0),
+  imageUrl: z.string().nullable().optional(),
+  initialReading: z.coerce.number().min(0).default(0),
+  isActive: z.coerce.boolean().optional(),
 });
 
 export const updateHouseSchema = z.object({
   houseNumber: z.string().min(1, 'House number is required').optional(),
   ownerName: z.string().min(1, 'Owner name is required').optional(),
-  imageUrl: z.string().url().optional().or(z.literal('')),
-  initialReading: z.number().min(0).optional(),
-  isActive: z.boolean().optional(),
+  imageUrl: z.string().nullable().optional(),
+  initialReading: z.coerce.number().min(0).optional(),
+  isActive: z.coerce.boolean().optional(),
 });
 
 // Meter Reading validation schemas
@@ -98,7 +99,7 @@ export const publicSearchSchema = z.object({
 // Query parameter schemas
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(2000).default(20),
+  limit: z.coerce.number().int().min(1).max(2000).default(500),
   search: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
