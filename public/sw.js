@@ -1,6 +1,5 @@
 const CACHE_NAME = 'water-system-pwa-cache-v1';
 
-// วางไฟล์พื้นฐานที่ต้องการแคชไว้เพื่อให้โหลดเร็วขึ้นเมื่อออฟไลน์
 const urlsToCache = [
   '/',
   '/manifest.webmanifest',
@@ -31,24 +30,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // ข้ามคำขอที่ไปเรียก API หรือไม่ใช่ HTTP(S)
-  if (!event.request.url.startsWith('http') || event.request.url.includes('/api/')) {
+  // ข้ามคำขอที่ไม่ใช่ GET หรือเป็นคำขอ API เพื่อไม่ให้ Service Worker บล็อกหรือขัดขวางการส่งข้อมูล (POST/PUT/DELETE)
+  if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
     return;
   }
 
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // พบในแคช ส่งแคชกลับไป
         if (response) {
           return response;
         }
-        // ไม่พบในแคช ดึงข้อมูลจากเครือข่าย
         return fetch(event.request).catch(() => {
-          // หากเครือข่ายล่มและเป็นคำขอหน้าเว็บ ให้พยายามคืนค่าหน้าแรกจากแคช
           if (event.request.mode === 'navigate') {
-            return caches.match('/');
+            return caches.match('/') || new Response('Offline', { status: 503 });
           }
+          return new Response('', { status: 408 });
         });
       })
   );
