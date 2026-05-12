@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
       orderBy: { readingDate: 'desc' },
     });
 
-    const previousReadingValue = Number(previousReading?.readingValue || 0);
+    const previousReadingValue = previousReading ? Number(previousReading.readingValue) : Number(house.initialReading || 0);
     const currentReadingValue = Number(meterReading.readingValue);
     const usage = currentReadingValue - previousReadingValue;
 

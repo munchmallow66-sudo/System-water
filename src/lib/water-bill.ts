@@ -53,7 +53,10 @@ export function calculateWaterBillWithRates(
  * @param usage - Water usage in cubic meters
  * @returns Array of tier breakdowns
  */
-export function getBillBreakdown(usage: number): Array<{
+export function getBillBreakdown(
+  usage: number,
+  customRates?: Array<{ minUnits: number; maxUnits: number; ratePerUnit: number }>
+): Array<{
   tier: string;
   min: number;
   max: number | null;
@@ -70,7 +73,15 @@ export function getBillBreakdown(usage: number): Array<{
     amount: number;
   }> = [];
 
-  for (const tier of WATER_RATES) {
+  const ratesToUse = customRates?.length
+    ? [...customRates].sort((a, b) => a.minUnits - b.minUnits).map(r => ({ 
+        min: r.minUnits, 
+        max: r.maxUnits === 999999 ? 0 : r.maxUnits, 
+        rate: r.ratePerUnit 
+      }))
+    : WATER_RATES;
+
+  for (const tier of ratesToUse) {
     if (usage <= tier.min) continue;
 
     const tierUsage = tier.max === 0

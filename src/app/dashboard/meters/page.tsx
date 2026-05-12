@@ -19,7 +19,9 @@ import {
   Receipt,
   Search,
   User,
-  X
+  X,
+  Pencil,
+  Trash2
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { MeterReadingForm } from '@/components/meters/MeterReadingForm'
@@ -95,6 +97,8 @@ export default function MetersPage() {
   const [showAnomaliesOnly, setShowAnomaliesOnly] = useState(false)
   const [billPreview, setBillPreview] = useState<BillPreview | null>(null)
   const [isCreatingBill, setIsCreatingBill] = useState(false)
+  const [editingReading, setEditingReading] = useState<MeterReading | null>(null)
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -325,6 +329,69 @@ export default function MetersPage() {
     }
   }
 
+  const handleDeleteReading = async (id: string) => {
+    if (!confirm('คุณต้องการลบประวัติการจดมิเตอร์นี้ใช่หรือไม่?')) return
+    try {
+      const response = await fetch(`/api/meter-readings/${id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null)
+        throw new Error(errData?.error || 'ไม่สามารถลบข้อมูลมิเตอร์ได้')
+      }
+      toast({ title: 'ลบข้อมูลสำเร็จ' })
+      await Promise.all([fetchReadings(), fetchHouses()])
+    } catch (error) {
+      console.error('Failed to delete reading:', error)
+      toast({
+        title: 'ลบข้อมูลไม่สำเร็จ',
+        description: error instanceof Error ? error.message : 'กรุณาลองใหม่อีกครั้ง',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!editingReading) return
+
+    setIsEditSubmitting(true)
+    try {
+      const formData = new FormData(e.currentTarget)
+      const readingValue = Number(formData.get('readingValue'))
+      const readingDate = formData.get('readingDate') as string
+      const notes = formData.get('notes') as string
+
+      const payload = {
+        readingValue,
+        readingDate: new Date(readingDate).toISOString(),
+        notes,
+      }
+
+      const response = await fetch(`/api/meter-readings/${editingReading.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null)
+        throw new Error(errData?.error || 'ไม่สามารถแก้ไขข้อมูลมิเตอร์ได้')
+      }
+
+      toast({ title: 'แก้ไขข้อมูลสำเร็จ' })
+      setEditingReading(null)
+      await Promise.all([fetchReadings(), fetchHouses()])
+    } catch (error) {
+      console.error('Failed to update reading:', error)
+      toast({
+        title: 'แก้ไขข้อมูลไม่สำเร็จ',
+        description: error instanceof Error ? error.message : 'กรุณาลองใหม่อีกครั้ง',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsEditSubmitting(false)
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -518,9 +585,27 @@ export default function MetersPage() {
                           <p className="text-sm text-slate-500">บ้าน {reading.house.houseNumber}</p>
                           <p className="mt-1 font-semibold text-slate-950 dark:text-white">{reading.house.ownerName}</p>
                         </div>
+                      <div className="flex items-center gap-2">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${reading.isAnomaly ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' : 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300'}`}>
                           {reading.isAnomaly ? 'ผิดปกติ' : 'ปกติ'}
                         </span>
+                        <div className="flex items-center gap-1 ml-1 border-l border-slate-200 pl-2 dark:border-slate-700">
+                          <button
+                            onClick={() => setEditingReading(reading)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+                            title="แก้ไข"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteReading(reading.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                            title="ลบ"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
                       </div>
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -691,6 +776,67 @@ export default function MetersPage() {
                     <><Receipt className="h-4 w-4" /> สร้างบิลทันที</>
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Modal */}
+        {editingReading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEditingReading(null)} />
+            <div className="relative z-50 w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">แก้ไขการจดมิเตอร์</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">บ้าน {editingReading.house?.houseNumber} - {editingReading.house?.ownerName}</p>
+                </div>
+                <button onClick={() => setEditingReading(null)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <form onSubmit={handleEditSubmit} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5 dark:text-slate-300">วันที่จด</label>
+                      <input 
+                        type="date" 
+                        name="readingDate" 
+                        defaultValue={editingReading.readingDate ? editingReading.readingDate.split('T')[0] : ''} 
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white" 
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5 dark:text-slate-300">เลขมิเตอร์</label>
+                      <input 
+                        type="number" 
+                        name="readingValue" 
+                        defaultValue={editingReading.readingValue} 
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white" 
+                        required 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5 dark:text-slate-300">หมายเหตุ</label>
+                    <textarea 
+                      name="notes" 
+                      defaultValue={editingReading.notes || ''} 
+                      rows={3} 
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white min-h-[80px]" 
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button type="button" onClick={() => setEditingReading(null)} className="rounded-full border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                      ยกเลิก
+                    </button>
+                    <button type="submit" disabled={isEditSubmitting} className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 inline-flex items-center">
+                      {isEditSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> กำลังบันทึก...</> : 'บันทึกการแก้ไข'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>

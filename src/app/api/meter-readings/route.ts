@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Calculate usage
-    const previousValue = previousReading ? Number(previousReading.readingValue) : 0;
+    const previousValue = previousReading ? Number(previousReading.readingValue) : Number(house.initialReading || 0);
     const usage = readingValue - previousValue;
 
     // Calculate average usage for anomaly detection (last 3 readings)
@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate usage fee
     const usageFee = calculateWaterBillWithRates(usage, ratesForCalc);
-    const breakdown = getBillBreakdown(usage);
+    const breakdown = getBillBreakdown(usage, ratesForCalc);
 
     // Calculate carry-over from unpaid bills
     const unpaidBills = await db.bill.findMany({

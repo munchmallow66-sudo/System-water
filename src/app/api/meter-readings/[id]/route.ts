@@ -134,3 +134,61 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return apiError('Failed to update meter reading');
   }
 }
+
+// DELETE /api/meter-readings/[id] - Delete meter reading
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    // Check authentication
+    const session = await getSession();
+    if (!session) {
+      return apiUnauthorized();
+    }
+
+    // Check authorization (Admin/Staff only)
+    if (!canCreateReadings(session.user)) {
+      return apiForbidden('Only administrators and staff can delete meter readings');
+    }
+
+    const { id } = await params;
+
+    // Check if reading exists
+    const existingReading = await db.meterReading.findUnique({
+      where: { id },
+    });
+
+    if (!existingReading) {
+      return apiNotFound('Meter reading not found');
+    }
+
+    // Check if reading has an associated bill
+    const associatedBill = await db.bill.findUnique({
+      where: { meterReadingId: id },
+    });
+
+    if (associatedBill) {
+      return apiError('Cannot delete meter reading that has an associated bill');
+    }
+
+    // Delete reading
+    await db.meterReading.delete({
+      where: { id },
+    });
+
+    // Log audit
+    await db.auditLog.create({
+      data: {
+        userId: session.user.id,
+        action: 'DELETE',
+        entity: 'MeterReading',
+        entityId: id,
+        details: JSON.stringify({ deleted: true }),
+      },
+    });
+
+    return apiSuccess({ success: true, message: 'Meter reading deleted successfully' });
+  } catch (error) {
+    console.error('Delete meter reading error:', error);
+    return apiError('Failed to delete meter reading');
+  }
+}
+
